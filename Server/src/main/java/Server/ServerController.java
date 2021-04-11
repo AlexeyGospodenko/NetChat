@@ -1,11 +1,12 @@
 package Server;
 
-import Server.Services.DatabaseServiceImpl;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -25,17 +26,12 @@ public class ServerController {
     public TextArea txtChat;
     public Button btnCreateScheme;
     public TextField txtJdbcUrl;
-    private SerialHandler serialHandler;
     private boolean running;
-    private final ConcurrentLinkedDeque<SerialHandler> clients = new ConcurrentLinkedDeque<>();
+    private ConcurrentLinkedDeque<SerialHandler> clients = new ConcurrentLinkedDeque<>();
 
     public void serverStart() {
-        txtLog.appendText(Message.of(ServerConstants.getServerUser(), DatabaseServiceImpl.getInstance().dbConnect()).getFormattedMessage());
-
-        if (DatabaseServiceImpl.getInstance().isDbConnect()) {
             createServerThread();
             btnStart.setDisable(true);
-        }
     }
 
     private void createServerThread() {
@@ -47,9 +43,11 @@ public class ServerController {
                 while (running) {
                     txtLog.appendText(Message.of(ServerConstants.getServerUser(), "Waiting for connection").getFormattedMessage());
                     Socket socket = server.accept();
-                    serialHandler = new SerialHandler(socket, this);
+                    ApplicationContext context = new AnnotationConfigApplicationContext(AppConfig.class);
+                    SerialHandler serialHandler = context.getBean("serialHandler", SerialHandler.class);
+                    serialHandler.setServerController(this); //Плохо, не понятно как передать текущий инстанс в спринге
+                    serialHandler.setSocket(socket);         //Плохо, не понятно как передать сокет в спринге
                     clients.add(serialHandler);
-                    //new Thread(serialHandler).start();
                     ExecService.getInstance().getExecutorService().submit(serialHandler);
                     LOGGER.info("Client accepted. Client info: {}", socket.getInetAddress());
                     txtLog.appendText(Message.of(ServerConstants.getServerUser(), "Client accepted").getFormattedMessage());
@@ -104,5 +102,4 @@ public class ServerController {
             txtLog.appendText(Message.of(ServerConstants.getServerUser(), (e.getMessage())).getFormattedMessage());
         }
     }
-
 }

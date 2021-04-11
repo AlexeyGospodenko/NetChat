@@ -6,6 +6,8 @@ import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.AnchorPane;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.net.URL;
@@ -17,6 +19,8 @@ public class ChatController implements Initializable {
     public TextArea txtChat;
     public TextField txtSend;
     public Button btnSend;
+
+    HistoryServiceImpl historyService;
 
     public void send() {
         Message message = Message.of(Client.ClientConstants.getCurrentUser(), txtSend.getText());
@@ -39,7 +43,7 @@ public class ChatController implements Initializable {
 
     public void initialize(URL location, ResourceBundle resources) {
         try {
-            Client.HistoryServiceImpl.getInstance().getHistory(10).forEach(histMessage -> txtChat.appendText(histMessage + "\n"));
+            historyService.getHistory(10).forEach(histMessage -> txtChat.appendText(histMessage + "\n"));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -51,7 +55,7 @@ public class ChatController implements Initializable {
             try {
                 while (true) {
                     Message message = (Message) ServerService.getInstance().getIs().readObject();
-                    Client.HistoryServiceImpl.getInstance().saveMessage(message.getFormattedMessage());
+                    historyService.saveMessage(message.getFormattedMessage());
                     txtChat.appendText(message.getFormattedMessage());
                 }
             } catch (Exception e) {
@@ -62,4 +66,8 @@ public class ChatController implements Initializable {
         readThread.start();
     }
 
+    @Autowired
+    public void setHistoryService(HistoryServiceImpl historyService) {
+        this.historyService = historyService;
+    }
 }

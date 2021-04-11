@@ -3,6 +3,8 @@ package Server;
 import Server.Services.DatabaseServiceImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -11,21 +13,34 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.sql.SQLException;
 
+@Component
+@Scope("prototype")
 public class SerialHandler implements Runnable, Closeable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SerialHandler.class);
 
-    private final ObjectOutputStream os;
-    private final ObjectInputStream is;
+    private ObjectOutputStream os;
+    private ObjectInputStream is;
     private boolean running;
-    private final ServerController serverController;
+    private ServerController serverController;
     private String nickname;
     private String login;
+    private DatabaseServiceImpl databaseService;
+    private Socket socket;
 
-    public SerialHandler(Socket socket, ServerController serverController) throws IOException {
+    public SerialHandler(DatabaseServiceImpl databaseService) throws IOException {
+        this.databaseService = databaseService;
+        running = true;
+        System.out.println("DB:" + databaseService.isDbConnect());
+    }
+
+    public void setSocket(Socket socket) throws IOException {
+        this.socket = socket;
         os = new ObjectOutputStream(socket.getOutputStream());
         is = new ObjectInputStream(socket.getInputStream());
-        running = true;
+    }
+
+    public void setServerController(ServerController serverController) {
         this.serverController = serverController;
     }
 
@@ -47,14 +62,14 @@ public class SerialHandler implements Runnable, Closeable {
                     if (message.getMessage().startsWith(ServerConstants.getPrefixRegisterMessage())) {
                         String[] data = message.getMessage().split(" ", 4);
                         if (data.length == 4) {
-                            boolean isLoginExists = DatabaseServiceImpl.getInstance().isLoginExists(data[1]);
-                            boolean isNicknameExists = DatabaseServiceImpl.getInstance().isNicknameExists(data[3]);
+                            boolean isLoginExists = databaseService.isLoginExists(data[1]);
+                            boolean isNicknameExists = databaseService.isNicknameExists(data[3]);
                             String registrationMessage = "";
                             registrationMessage = registrationMessage + ((isLoginExists) ? ServerConstants.getLoginBusyMessage() : "");
                             registrationMessage = registrationMessage + ((isNicknameExists) ? ServerConstants.getNicknameBusyMessage() : "");
                             if (registrationMessage.equals("")) {
                                 registrationMessage = ServerConstants.getIsRegistrationMessage();
-                                DatabaseServiceImpl.getInstance().addUser(data[1], data[2], data[3]);
+                                databaseService.addUser(data[1], data[2], data[3]);
                             }
                             os.writeObject(Message.of(ServerConstants.getSystemUser(), ServerConstants.getPrefixRegisterMessage() + registrationMessage));
                             LOGGER.debug(registrationMessage);
@@ -66,7 +81,7 @@ public class SerialHandler implements Runnable, Closeable {
                     if (message.getMessage().startsWith(ServerConstants.getPrefixAuthMessage())) {
                         String[] data = message.getMessage().split(" ", 3);
                         if (data.length == 3) {
-                            nickname = DatabaseServiceImpl.getInstance().auth(data[1], data[2]);
+                            nickname = databaseService.auth(data[1], data[2]);
                             if (nickname == null) {
                                 os.writeObject(Message.of(ServerConstants.getSystemUser(),
                                         ServerConstants.getPrefixAuthMessage() + ServerConstants.getAuthFailedMessage()));
@@ -105,11 +120,11 @@ public class SerialHandler implements Runnable, Closeable {
                 if (message.getMessage().toLowerCase().startsWith(ServerConstants.getPrefixChangeNicknameMessage())) {
                     String[] data = message.getMessage().substring(ServerConstants.getPrefixChangeNicknameMessage().length()).split(" ", 2);
                     if (data.length == 1) {
-                        if (DatabaseServiceImpl.getInstance().isNicknameExists(data[0])) {
+                        if (databaseService.isNicknameExists(data[0])) {
                             Message messageNicknameReserved = Message.of(ServerConstants.getSystemUser(), "Nickname \"" + data[0] + "\" is reserved");
                             os.writeObject(messageNicknameReserved);
                         } else {
-                            DatabaseServiceImpl.getInstance().changeNickname(nickname, data[0]);
+                            databaseService.changeNickname(nickname, data[0]);
                             Message messageChangeNickname = Message.of(ServerConstants.getSystemUser(),
                                     "User \"" + nickname + "\" change nickname to \"" + data[0] + "\"");
                             LOGGER.info("User {{}} change nickname to {{}}", nickname, data[0]);

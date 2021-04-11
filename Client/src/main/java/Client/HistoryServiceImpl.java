@@ -1,21 +1,20 @@
 package Client;
 
+import org.springframework.stereotype.Component;
+
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-
+@Component
 public class HistoryServiceImpl implements HistoryService {
 
     private static HistoryServiceImpl instance;
     private String path;
     OutputStream os;
 
-    private HistoryServiceImpl() {
-    }
-
-    public static HistoryServiceImpl getInstance() {
+        public static HistoryServiceImpl getInstance() {
         if (instance == null) {
             instance = new HistoryServiceImpl();
         }

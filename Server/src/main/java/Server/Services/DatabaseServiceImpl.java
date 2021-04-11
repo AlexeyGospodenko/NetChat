@@ -1,35 +1,21 @@
 package Server.Services;
 
+import org.springframework.stereotype.Component;
+
 import java.io.Closeable;
 import java.sql.*;
 
+@Component
 public class DatabaseServiceImpl implements DatabaseService, Closeable {
-    private static DatabaseServiceImpl instance;
-
     private boolean isDbConnect = false;
     private Connection connection;
     private Statement statement;
 
-    private DatabaseServiceImpl() {
-    }
-
-    public String dbConnect() {
-        try {
-            Class.forName("oracle.jdbc.driver.OracleDriver");
-            connection = DriverManager.getConnection("jdbc:oracle:thin:@localhost:1521:xe", "CHAT_AUTH", "CHAT_AUTH");
-            statement = connection.createStatement();
-            isDbConnect = true;
-            return "DB connection successfully created";
-        } catch (ClassNotFoundException | SQLException e) {
-            return e.getMessage();
-        }
-    }
-
-    public static DatabaseServiceImpl getInstance() {
-        if (instance == null) {
-            instance = new DatabaseServiceImpl();
-        }
-        return instance;
+    public DatabaseServiceImpl() throws SQLException, ClassNotFoundException {
+        Class.forName("oracle.jdbc.driver.OracleDriver");
+        connection = DriverManager.getConnection("jdbc:oracle:thin:@localhost:1521:xe", "CHAT_AUTH", "CHAT_AUTH");
+        statement = connection.createStatement();
+        isDbConnect = true;
     }
 
     public boolean isDbConnect() {

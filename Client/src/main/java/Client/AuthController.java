@@ -3,12 +3,20 @@ package Client;
 import Server.Message;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.AnchorPane;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.Socket;
 
-public class AuthController {
+
+@Component
+public class AuthController{
 
     public TextField txtLogin;
     public TextField txtPassword;
@@ -16,8 +24,16 @@ public class AuthController {
     public TextField txtHost;
     public TextField txtPort;
     private boolean isAuth = false;
+    private HistoryServiceImpl historyService;
 
-    public void enter() throws Exception {
+    @Autowired
+    public void setHistoryService(HistoryServiceImpl historyService) {
+        this.historyService = historyService;
+    }
+
+    public void enter() throws Exception{
+        ApplicationContext context = new AnnotationConfigApplicationContext(AppConfig.class);
+        context.getBean("authController", AuthController.class);
         createConnect();
 
         ServerService.getInstance().getOs().writeObject(Message.of(ClientConstants.getSystemUser(),
@@ -47,7 +63,7 @@ public class AuthController {
         readThread.join();
 
         if (isAuth) {
-            Client.HistoryServiceImpl.getInstance().setLogin(txtLogin.getText());
+            historyService.setLogin(txtLogin.getText());
             new CreateWindow("chat.fxml", "NetChat - Login: " + txtLogin.getText(), true);
             window.getScene().getWindow().hide();
         }
